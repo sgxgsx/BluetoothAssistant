@@ -1,0 +1,29 @@
+<resources>
+    <string name="app_name">蓝牙测试辅助</string>
+    <string name="label_start_service">启动蓝牙测试辅助服务</string>
+    <string name="label_stop_service">停止蓝牙测试辅助服务</string>
+    <string name="label_service_started_title">正在运行“蓝牙测试辅助服务”</string>
+    <string name="text_service_started_content">点击进入“蓝牙测试辅助服务”配置管理。</string>
+    <string name="text_service_started">已启动“蓝牙测试辅助服务”。</string>
+    <string name="text_service_stopped">已停止“蓝牙测试辅助服务”。</string>
+    <string name="text_readme">此App用来辅助测试蓝牙设备。\n
+        它可以接收adb shell发送的指令，帮忙代理执行手机上的蓝牙功能：\n
+        1. 开启蓝牙\n
+        2. 关闭蓝牙\n
+        3. 与指定的蓝牙设备配对\n
+        4. 解除与指定设备的配对\n
+        5. 搜索指定的设备是否在线\n
+        6. 修改本机蓝牙名称\n\n
+        请在shell端通过adb启动组件并传递不同的参数来执行这些指令。例：\n
+          adb shell am start -n xie.morrowind.tool.btassist/.MainActivity\n
+        根据不同的指令，需额外附加如下参数：\n
+          1. -e test open 打开蓝牙\n
+          2. -e test close 关闭蓝牙\n
+          3. -e test pair -e device XXXX 与XXXX进行配对\n
+          4. -e test unpair -e device XXXX 取消与XXXX的配对\n
+          5. -e test discovery -e device XXXX 搜索是否存在名为XXXX的蓝牙设备\n
+          6. -e test rename -e name XXXX 将本机蓝牙重命名为XXXX\n\n
+        执行结果将通过/sdcard/bluetooth.txt来反馈，其中第一行内容为指令名称；第二行为结果，1表示成功，0表示失败；如果有第三行，则为附加的信息，例如失败原因等。\n\n
+    </string>
+    <string name="accessibility_service_description">通过辅助服务监控窗口的改变来自动执行蓝牙配对任务。</string>
+</resources>

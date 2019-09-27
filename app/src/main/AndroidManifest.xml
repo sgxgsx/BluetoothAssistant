@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="xie.morrowind.tool.btassist">
+
+    <uses-permission android:name="android.permission.BLUETOOTH"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_PRIVILEGED"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+
+    <uses-feature android:name="android.hardware.bluetooth" android:required="true"/>
+
+    <application
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@android:style/Theme.Holo"
+        android:persistent="true">
+        <activity android:name=".ConfigActivity" android:launchMode="singleTop">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity android:name=".MainActivity" android:launchMode="singleTop" android:exported="true"/>
+        <activity android:name=".OpenActivity" android:launchMode="singleTop"/>
+        <activity android:name=".CloseActivity" android:launchMode="singleTop"/>
+        <activity android:name=".PairActivity" android:launchMode="singleTop"/>
+        <activity android:name=".UnpairActivity" android:launchMode="singleTop"/>
+        <activity android:name=".DiscoveryActivity" android:launchMode="singleTop"/>
+        <activity android:name=".RenameActivity" android:launchMode="singleTop"/>
+
+        <receiver android:name=".PassivePairingReceiver" >
+            <intent-filter>
+                <action android:name="android.bluetooth.device.action.PAIRING_REQUEST" />
+            </intent-filter>
+        </receiver>
+        <service
+            android:label="@string/app_name"
+            android:name=".BotService"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:enabled="true"
+            android:exported="true"
+            >
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service"/>
+        </service>
+    </application>
+
+</manifest>
