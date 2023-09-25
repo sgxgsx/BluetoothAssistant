@@ -1,19 +1,3 @@
-/*
- * Copyright (C) 2013 <MorrowindXie@gmail.com>.
- * This module is cloned from https://github.com/morrowind/ReflectUtil
- * 
- * Licensed under the Apache License, Version 2.0 (the "License");
- * You may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed 
- * under the License is distributed on an "AS IS" BASIS, WITHOUT 
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and limitations 
- * under the License.
- */
-
 package xie.morrowind.util;
 
 import java.lang.reflect.Field;
@@ -21,9 +5,12 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.regex.Pattern;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 /**
  * Wrapper and extension of {@link java.lang.reflect}.<br/>
@@ -33,37 +20,23 @@ import java.util.regex.Pattern;
  *     <li>Get definition name string of specified class field.</li>
  * </ul>
  *
- * @author morrowindxie
  * @version 1.0
+ * @author morrowindxie
  */
 public final class ReflectUtil {
 
-    /**
-     * Get object's fields information, not include final fields.
-     * @param obj The object which you want to get all it's fields info.
-     * @return The fields info string, each field occupies one line.
-     */
-    public static String getFieldsInfo(Object obj) {
-        return getFieldsInfo(obj, false);
-    }
-    
     /**
      * Get object's fields information.
      * @param obj The object which you want to get all it's fields info.
      * @param includeFinal Whether include final fields.
      * @return The fields info string, each field occupies one line.
      */
-    public static String getFieldsInfo(Object obj, boolean includeFinal) {
+    public static String getFieldsInfo(@NonNull Object obj, boolean includeFinal) {
         Class<?> cls = obj.getClass();
         Field[] fields = cls.getDeclaredFields();
         cls.getDeclaredMethods();
 
-        Arrays.sort(fields, new Comparator<Field>() {
-            @Override
-            public int compare(Field lhs, Field rhs) {
-                return lhs.getName().compareTo(rhs.getName());
-            }
-        });
+        Arrays.sort(fields, (lhs, rhs) -> lhs.getName().compareTo(rhs.getName()));
         StringBuilder sb = new StringBuilder();
         sb.append(String.format("Fields of [%s: ", cls.getSimpleName()));
         for(Field field : fields) {
@@ -103,7 +76,7 @@ public final class ReflectUtil {
                             sb.append(Integer.toHexString(v));
                         }
                     } else if(value instanceof Long) {
-                        Long v = (Long) value;
+                        long v = (Long) value;
                         sb.append(v);
                         sb.append("L");
                         if(v >= 10 || v < -10) {
@@ -111,20 +84,16 @@ public final class ReflectUtil {
                             sb.append(Long.toHexString(v));
                         }
                     } else if(value instanceof Float) {
-                        sb.append(value.toString());
+                        sb.append(value);
                         sb.append("f");
                     } else if(value instanceof CharSequence) {
                         sb.append("\"");
-                        sb.append(value.toString());
+                        sb.append(value);
                         sb.append("\"");
                     } else {
-                        sb.append(value.toString());
+                        sb.append(value);
                     }
-                } catch (IllegalArgumentException e) {
-                    e.printStackTrace();
-                } catch (IllegalAccessException e) {
-                    e.printStackTrace();
-                } catch (NullPointerException e) {
+                } catch (IllegalArgumentException | IllegalAccessException | NullPointerException e) {
                     e.printStackTrace();
                 }
                 sb.append(";");
@@ -134,32 +103,28 @@ public final class ReflectUtil {
     }
 
     /**
-     * Get definition name string of an integer class field.
+     * Get the constant string field name which is decorated by "public static final".
      * @param cls Class who defines the field.
      * @param value Field value.
-     * @param regex Regular expression for matching the field name.
-     * @return The field name string.
+     * @param regex Regular expression help to match the field name, if null, the first found field will be returned.
+     * @return The field name.
      */
-    public static String getFieldName(Class<?> cls, int value, String regex) {
+    public static String getFieldName(@NonNull Class<?> cls, @NonNull String value, @Nullable String regex) {
+        Pattern pattern = Pattern.compile(regex != null ? regex : ".*");
         Field[] fields = cls.getDeclaredFields();
-        for (Field f : fields) {
-            if(!f.isAccessible()) {
-                f.setAccessible(true);
+        for (Field field : fields) {
+            if(!field.isAccessible()) {
+                field.setAccessible(true);
             }
             try {
-                if (f.getType().equals(int.class)
-                        && (f.getModifiers() & Modifier.PUBLIC) != 0
-                        && (f.getModifiers() & Modifier.STATIC) != 0 
-                        && (f.getModifiers() & Modifier.FINAL) != 0
-                        && (f.getInt(null) == value)) {
-                    String name = f.getName();
-                    if(regex == null || regex.isEmpty()) {
+                if (field.getType().equals(String.class)
+                        && (Modifier.isPublic(field.getModifiers()))
+                        && (Modifier.isStatic(field.getModifiers()))
+                        && (Modifier.isFinal(field.getModifiers()))
+                        && (Objects.equals(field.get(null), value))) {
+                    String name = field.getName();
+                    if (pattern.matcher(name).matches()) {
                         return name;
-                    } else {
-                        Pattern p = Pattern.compile(regex);
-                        if(p.matcher(name).matches()) {
-                            return name;
-                        }
                     }
                 }
             } catch (IllegalAccessException | IllegalArgumentException e) {
@@ -170,42 +135,28 @@ public final class ReflectUtil {
     }
 
     /**
-     * Get definition name string of an integer class field.
+     * Get the constant primitive int field name which is decorated by "public static final".
      * @param cls Class who defines the field.
      * @param value Field value.
-     * @return The field name string.
+     * @param regex Regular expression help to match the field name, if null, the first found field will be returned.
+     * @return The field name.
      */
-    public static String getFieldName(Class<?> cls, int value) {
-        return getFieldName(cls, value, null);
-    }
-
-    /**
-     * Get definition name string of a long class field.
-     * @param cls Class who defines the field.
-     * @param value Field value.
-     * @param regex Regular expression for matching the field name.
-     * @return The field name string.
-     */
-    public static String getFieldName(Class<?> cls, long value, String regex) {
+    public static String getFieldName(@NonNull Class<?> cls, int value, @Nullable String regex) {
+        Pattern pattern = Pattern.compile(regex != null ? regex : ".*");
         Field[] fields = cls.getDeclaredFields();
-        for (Field f : fields) {
-            if(!f.isAccessible()) {
-                f.setAccessible(true);
+        for (Field field : fields) {
+            if(!field.isAccessible()) {
+                field.setAccessible(true);
             }
             try {
-                if (f.getType().equals(long.class)
-                        && (f.getModifiers() & Modifier.PUBLIC) != 0
-                        && (f.getModifiers() & Modifier.STATIC) != 0 
-                        && (f.getModifiers() & Modifier.FINAL) != 0
-                        && (f.getLong(null) == value)) {
-                    String name = f.getName();
-                    if(regex == null || regex.isEmpty()) {
+                if (field.getType().equals(int.class)
+                        && (Modifier.isPublic(field.getModifiers()))
+                        && (Modifier.isStatic(field.getModifiers()))
+                        && (Modifier.isFinal(field.getModifiers()))
+                        && (field.getInt(null) == value)) {
+                    String name = field.getName();
+                    if (pattern.matcher(name).matches()) {
                         return name;
-                    } else {
-                        Pattern p = Pattern.compile(regex);
-                        if(p.matcher(name).matches()) {
-                            return name;
-                        }
                     }
                 }
             } catch (IllegalAccessException | IllegalArgumentException e) {
@@ -216,42 +167,28 @@ public final class ReflectUtil {
     }
 
     /**
-     * Get definition name string of a long class field.
+     * Get the constant primitive long field name which is decorated by "public static final".
      * @param cls Class who defines the field.
      * @param value Field value.
-     * @return The field name string.
+     * @param regex Regular expression help to match the field name, if null, the first found field will be returned.
+     * @return The field name.
      */
-    public static String getFieldName(Class<?> cls, long value) {
-        return getFieldName(cls, value, null);
-    }
-
-    /**
-     * Get definition name string of a string class field.
-     * @param cls Class who defines the field.
-     * @param value Field value.
-     * @param regex Regular expression for matching the field name.
-     * @return The field name string.
-     */
-    public static String getFieldName(Class<?> cls, String value, String regex) {
+    public static String getFieldName(@NonNull Class<?> cls, long value, @Nullable String regex) {
+        Pattern pattern = Pattern.compile(regex != null ? regex : ".*");
         Field[] fields = cls.getDeclaredFields();
-        for (Field f : fields) {
-            if(!f.isAccessible()) {
-                f.setAccessible(true);
+        for (Field field : fields) {
+            if(!field.isAccessible()) {
+                field.setAccessible(true);
             }
             try {
-                if (f.getType().equals(String.class)
-                        && (f.getModifiers() & Modifier.PUBLIC) != 0
-                        && (f.getModifiers() & Modifier.STATIC) != 0 
-                        && (f.getModifiers() & Modifier.FINAL) != 0
-                        && (f.get(null).equals(value))) {
-                    String name = f.getName();
-                    if(regex == null || regex.isEmpty()) {
+                if (field.getType().equals(long.class)
+                        && (Modifier.isPublic(field.getModifiers()))
+                        && (Modifier.isStatic(field.getModifiers()))
+                        && (Modifier.isFinal(field.getModifiers()))
+                        && (field.getLong(null) == value)) {
+                    String name = field.getName();
+                    if (pattern.matcher(name).matches()) {
                         return name;
-                    } else {
-                        Pattern p = Pattern.compile(regex);
-                        if(p.matcher(name).matches()) {
-                            return name;
-                        }
                     }
                 }
             } catch (IllegalAccessException | IllegalArgumentException e) {
@@ -262,13 +199,100 @@ public final class ReflectUtil {
     }
 
     /**
-     * Get definition name string of a string class field.
+     * Get the constant primitive float field name which is decorated by "public static final".
      * @param cls Class who defines the field.
      * @param value Field value.
-     * @return The field name string.
+     * @param regex Regular expression help to match the field name, if null, the first found field will be returned.
+     * @return The field name.
      */
-    public static String getFieldName(Class<?> cls, String value) {
-        return getFieldName(cls, value, null);
+    public static String getFieldName(@NonNull Class<?> cls, float value, @Nullable String regex) {
+        Pattern pattern = Pattern.compile(regex != null ? regex : ".*");
+        Field[] fields = cls.getDeclaredFields();
+        for (Field field : fields) {
+            if(!field.isAccessible()) {
+                field.setAccessible(true);
+            }
+            try {
+                if (field.getType().equals(float.class)
+                        && (Modifier.isPublic(field.getModifiers()))
+                        && (Modifier.isStatic(field.getModifiers()))
+                        && (Modifier.isFinal(field.getModifiers()))
+                        && (field.getFloat(null) == value)) {
+                    String name = field.getName();
+                    if (pattern.matcher(name).matches()) {
+                        return name;
+                    }
+                }
+            } catch (IllegalAccessException | IllegalArgumentException e) {
+                e.printStackTrace();
+            }
+        }
+        return "UNKNOWN: " + value;
+    }
+
+    /**
+     * Get the constant primitive double field name which is decorated by "public static final".
+     * @param cls Class who defines the field.
+     * @param value Field value.
+     * @param regex Regular expression help to match the field name, if null, the first found field will be returned.
+     * @return The field name.
+     */
+    public static String getFieldName(@NonNull Class<?> cls, double value, @Nullable String regex) {
+        Pattern pattern = Pattern.compile(regex != null ? regex : ".*");
+        Field[] fields = cls.getDeclaredFields();
+        for (Field field : fields) {
+            if(!field.isAccessible()) {
+                field.setAccessible(true);
+            }
+            try {
+                if (field.getType().equals(double.class)
+                        && (Modifier.isPublic(field.getModifiers()))
+                        && (Modifier.isStatic(field.getModifiers()))
+                        && (Modifier.isFinal(field.getModifiers()))
+                        && (field.getDouble(null) == value)) {
+                    String name = field.getName();
+                    if (pattern.matcher(name).matches()) {
+                        return name;
+                    }
+                }
+            } catch (IllegalAccessException | IllegalArgumentException e) {
+                e.printStackTrace();
+            }
+        }
+        return "UNKNOWN: " + value;
+    }
+
+
+    public static <T> T getPublicStaticFieldValue(@NonNull Class<?> objCls, @NonNull Class<T> fieldCls, @NonNull String fieldName) {
+        try {
+            Field field = objCls.getField(fieldName);
+            if (Modifier.isPublic(field.getModifiers()) && Modifier.isStatic(field.getModifiers())) {
+                if (field.getType().equals(fieldCls)) {
+                    if (byte.class.equals(fieldCls) || Byte.class.equals(fieldCls)) {
+                        return (T) Byte.valueOf(field.getByte(null));
+                    } else if (short.class.equals(fieldCls) || Short.class.equals(fieldCls)) {
+                        return (T) Short.valueOf(field.getShort(null));
+                    } else if (int.class.equals(fieldCls) || Integer.class.equals(fieldCls)) {
+                        return (T) Integer.valueOf(field.getInt(null));
+                    } else if (long.class.equals(fieldCls) || Long.class.equals(fieldCls)) {
+                        return (T) Long.valueOf(field.getLong(null));
+                    } else if (float.class.equals(fieldCls) || Float.class.equals(fieldCls)) {
+                        return (T) Float.valueOf(field.getFloat(null));
+                    } else if (double.class.equals(fieldCls) || Double.class.equals(fieldCls)) {
+                        return (T) Double.valueOf(field.getDouble(null));
+                    } else if (boolean.class.equals(fieldCls) || Boolean.class.equals(fieldCls)) {
+                        return (T) Boolean.valueOf(field.getBoolean(null));
+                    } else if (char.class.equals(fieldCls) || Character.class.equals(fieldCls)) {
+                        return (T) Character.valueOf(field.getChar(null));
+                    } else {
+                        return (T) field.get(null);
+                    }
+                }
+            }
+        } catch (NoSuchFieldException | IllegalAccessException | IllegalArgumentException | NullPointerException | ExceptionInInitializerError e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
 }

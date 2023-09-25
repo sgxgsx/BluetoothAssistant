@@ -1,5 +1,7 @@
 package xie.morrowind.tool.btassist;
 
+import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.bluetooth.BluetoothA2dp;
 import android.bluetooth.BluetoothAdapter;
@@ -9,8 +11,10 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -25,7 +29,8 @@ import java.util.List;
 import xie.morrowind.util.LogUtil;
 import xie.morrowind.util.ReflectUtil;
 
-public abstract class BluetoothActivity extends Activity {
+@SuppressLint("MissingPermission")
+public abstract class BluetoothActivity extends AppCompatActivity {
     public static String testDeviceName = "test-bt";
 
     void onBluetoothOpen(boolean success) {
@@ -37,23 +42,33 @@ public abstract class BluetoothActivity extends Activity {
     }
 
     void onBluetoothBonded(BluetoothDevice device, boolean succ) {
-        LogUtil.d("Bond " + device.getName() + " " + (succ ? "succ" : "fail"));
+        if (checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
+            LogUtil.d("Bond " + device.getName() + " " + (succ ? "succ" : "fail"));
+        }
     }
 
     void onBluetoothUnbind(BluetoothDevice device) {
-        LogUtil.d("Unbond with " + device.getName());
+        if (checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
+            LogUtil.d("Unbond with " + device.getName());
+        }
     }
 
     void onBluetoothConnected(BluetoothDevice device, boolean succ) {
-        LogUtil.d("Connect " + device.getName() + " " + (succ ? "succ" : "fail"));
+        if (checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
+            LogUtil.d("Connect " + device.getName() + " " + (succ ? "succ" : "fail"));
+        }
     }
 
     void onBluetoothDisconnected(BluetoothDevice device, boolean succ) {
-        LogUtil.d("Disconnect " + device.getName() + " " + (succ ? "succ" : "fail"));
+        if (checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
+            LogUtil.d("Disconnect " + device.getName() + " " + (succ ? "succ" : "fail"));
+        }
     }
 
     void onBluetoothDeviceFound(BluetoothDevice device) {
-        LogUtil.d("Found device: " + device.getName());
+        if (checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
+            LogUtil.d("Found device: " + device.getName());
+        }
     }
 
     final void finishTest(boolean result) {
@@ -114,8 +129,10 @@ public abstract class BluetoothActivity extends Activity {
         if (receiver != null) {
             unregisterReceiver(receiver);
         }
-        if (bluetoothAdapter.isDiscovering()) {
-            bluetoothAdapter.cancelDiscovery();
+        if (checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED) {
+            if (bluetoothAdapter.isDiscovering()) {
+                bluetoothAdapter.cancelDiscovery();
+            }
         }
         super.onDestroy();
     }
@@ -160,7 +177,7 @@ public abstract class BluetoothActivity extends Activity {
                 case BluetoothDevice.ACTION_FOUND:
                     BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
                     int deviceClass = device.getBluetoothClass().getDeviceClass();
-                    LogUtil.d("Found device: " + device.getName() + ", class: " + String.format("%04X", deviceClass));
+                    LogUtil.d("Found device: " + device.getName() + ", class: " + String.format("%04X", deviceClass) + ", MAC: " + device.getAddress());
                     deviceList.add(0, device);
                     if (listAdapter != null) {
                         listAdapter.notifyDataSetChanged();
@@ -179,19 +196,21 @@ public abstract class BluetoothActivity extends Activity {
                     }*/
                     break;
                 case BluetoothDevice.ACTION_PAIRING_REQUEST:
-                    abortBroadcast();
-                    device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
-                    LogUtil.d("Pairing with " + device.getName());
-                    boolean ret = BluetoothUtil.setPairingConfirmation(device, true);
-                    LogUtil.d("setPairingConfirmation = " + ret);
-                    if (ret) {
-                        ret = BluetoothUtil.setPin(device, "0000");
-                        LogUtil.d("setPin = " + ret);
-                    }
-                    if (ret) {
-                        LogUtil.d("Waiting for bond state changing...");
-                    } else {
-                        finishTest(false, "Permission denied.");
+                    if (checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
+                        abortBroadcast();
+                        device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                        LogUtil.d("Pairing with " + device.getName());
+                        boolean ret = BluetoothUtil.setPairingConfirmation(device, true);
+                        LogUtil.d("setPairingConfirmation = " + ret);
+                        if (ret) {
+                            ret = BluetoothUtil.setPin(device, "0000");
+                            LogUtil.d("setPin = " + ret);
+                        }
+                        if (ret) {
+                            LogUtil.d("Waiting for bond state changing...");
+                        } else {
+                            finishTest(false, "Permission denied.");
+                        }
                     }
                     break;
                 case BluetoothDevice.ACTION_BOND_STATE_CHANGED:
@@ -271,11 +290,13 @@ public abstract class BluetoothActivity extends Activity {
             }
             BluetoothDevice device = getItem(position);
             TextView nameView = convertView.findViewById(R.id.name_view);
-            nameView.setText(device.getName());
-            if (!TextUtils.isEmpty(device.getName()) && device.getName().contains(testDeviceName)) {
-                nameView.setTextColor(Color.YELLOW);
-            } else {
-                nameView.setTextColor(getColor(android.R.color.primary_text_dark));
+            if (checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
+                nameView.setText(device.getName());
+                if (!TextUtils.isEmpty(device.getName()) && device.getName().contains(testDeviceName)) {
+                    nameView.setTextColor(Color.YELLOW);
+                } else {
+                    nameView.setTextColor(getColor(android.R.color.primary_text_dark));
+                }
             }
             TextView addressView = convertView.findViewById(R.id.address_view);
             addressView.setText(device.getAddress());

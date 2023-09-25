@@ -1,10 +1,12 @@
 package xie.morrowind.tool.btassist;
 
+import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothAdapter;
 import android.os.Bundle;
 
 import xie.morrowind.util.LogUtil;
 
+@SuppressLint("MissingPermission")
 public class CloseActivity extends BluetoothActivity {
 
     @Override

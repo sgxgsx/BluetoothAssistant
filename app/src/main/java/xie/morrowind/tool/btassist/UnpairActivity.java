@@ -1,24 +1,26 @@
 package xie.morrowind.tool.btassist;
 
+import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothDevice;
 import android.os.Bundle;
 
 import xie.morrowind.util.LogUtil;
 
+@SuppressLint("MissingPermission")
 public class UnpairActivity extends BluetoothActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        if (!BluetoothUtil.isBonded(deviceName)) {
+        if (!BluetoothUtil.isBonded(this, deviceName)) {
             finishTest(true, "\"" + deviceName + "\" already unpaired.");
             return;
         }
 
         if (bluetoothAdapter.isEnabled()) {
             LogUtil.d("Already opened, start unpair \"" + deviceName + "\"...");
-            if (!BluetoothUtil.removeBond(deviceName)) {
+            if (!BluetoothUtil.removeBond(this, deviceName)) {
                 finishTest(false, "Invoke removeBond() failed.");
             } else {
                 LogUtil.d("Waiting for unpair...");
@@ -34,7 +36,7 @@ public class UnpairActivity extends BluetoothActivity {
         super.onBluetoothOpen(succ);
         if (succ) {
             LogUtil.d("Bluetooth opened, start unpair \"" + deviceName + "\"...");
-            if (!BluetoothUtil.removeBond(deviceName)) {
+            if (!BluetoothUtil.removeBond(this, deviceName)) {
                 finishTest(false, "Invoke removeBond() failed.");
             } else {
                 LogUtil.d("Waiting for unpair...");

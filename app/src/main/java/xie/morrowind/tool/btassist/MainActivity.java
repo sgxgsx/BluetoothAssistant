@@ -18,7 +18,6 @@ import xie.morrowind.util.LogUtil;
 
 public class MainActivity extends Activity {
     private final static String DEF_FILE = "bluetooth.txt";
-    private final static int REQUEST_CODE = 1979;
 
     private String testName = null;
     private File resultFile = null;
@@ -26,6 +25,8 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        LogUtil.init(this);
+        LogUtil.setEnforceOutput(true);
         LogUtil.d();
 
         if (BluetoothAdapter.getDefaultAdapter() == null) {
@@ -49,7 +50,7 @@ public class MainActivity extends Activity {
                 Intent intent = new Intent();
                 intent.setClass(this, cls);
                 intent.putExtras(getIntent());
-                startActivityForResult(intent, REQUEST_CODE);
+                startActivityForResult(intent, 0);
             } else {
                 String errMsg = cls.getSimpleName() + "不是正确的Activity。";
                 LogUtil.e(errMsg);
@@ -72,7 +73,7 @@ public class MainActivity extends Activity {
         super.onActivityResult(requestCode, resultCode, data);
         String resCodeStr = (resultCode == Activity.RESULT_OK ? "RESULT_OK" : "RESULT_CANCELED");
         LogUtil.d("("+requestCode+", "+resCodeStr+")");
-        if (requestCode == REQUEST_CODE) {
+        if (requestCode == 0) {
             String reason = null;
             if (data != null) {
                 reason = data.getStringExtra("reason");
@@ -113,7 +114,7 @@ public class MainActivity extends Activity {
         if (filepath.contains("/")) {
             file = new File(filepath);
         } else {
-            file = new File(Environment.getExternalStorageDirectory(), filepath);
+            file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), filepath);
         }
         if (file.exists()) {
             file.delete();

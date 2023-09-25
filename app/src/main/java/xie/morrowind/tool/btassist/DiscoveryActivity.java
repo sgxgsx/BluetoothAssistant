@@ -1,17 +1,20 @@
 package xie.morrowind.tool.btassist;
 
+import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothDevice;
 import android.os.Bundle;
 import android.text.TextUtils;
 
 import xie.morrowind.util.LogUtil;
 
+@SuppressLint("MissingPermission")
 public class DiscoveryActivity extends BluetoothActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        LogUtil.d();
         if (TextUtils.isEmpty(deviceName)) {
             finishTest(false, "Device name not specified.");
             return;

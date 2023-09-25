@@ -1,5 +1,6 @@
 package xie.morrowind.tool.btassist;
 
+import android.Manifest;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -13,6 +14,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.IBinder;
 
@@ -21,7 +23,7 @@ import xie.morrowind.util.ReflectUtil;
 
 public class BluetoothService extends Service {
     public final static String ACTION_BLUETOOTH_SERVICE_CHANGED =
-            "xie.morrowind.intent.action.BLUETOOTH_SERVICE_CHANGED";
+            "xox.intent.action.BLUETOOTH_SERVICE_CHANGED";
     public final static String EXTRA_SERVING_STATE = "service state";
 
     private boolean hook = false;
@@ -31,7 +33,7 @@ public class BluetoothService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        LogUtil.e();
+        LogUtil.d();
 
         // Set notification to avoid low memory kill.
         NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
@@ -170,17 +172,21 @@ public class BluetoothService extends Service {
                     break;
 
                 case BluetoothDevice.ACTION_FOUND:
-                    BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
-                    int deviceClass = device.getBluetoothClass().getDeviceClass();
-                    LogUtil.d("Found device: " + device.toString() + ", class: " + String.format("%04X", deviceClass));
+                    if (checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
+                        BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                        int deviceClass = device.getBluetoothClass().getDeviceClass();
+                        LogUtil.d("Found device: " + device + ", class: " + String.format("%04X", deviceClass));
+                    }
                     break;
                 case BluetoothDevice.ACTION_PAIRING_REQUEST:
                     if (!hook) {
                         abortBroadcast();
-                        device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
-                        LogUtil.d("Pairing with " + device.getName());
-                        BluetoothUtil.setPairingConfirmation(device, true);
-                        BluetoothUtil.setPin(device, "0000");
+                        if (checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
+                            BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                            LogUtil.d("Pairing with " + device.getName());
+                            BluetoothUtil.setPairingConfirmation(device, true);
+                            BluetoothUtil.setPin(device, "0000");
+                        }
                     }
                     break;
                 case BluetoothDevice.ACTION_BOND_STATE_CHANGED:

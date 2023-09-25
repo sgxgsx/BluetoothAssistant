@@ -2,6 +2,7 @@ package xie.morrowind.util.android;
 
 import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.AccessibilityServiceInfo;
+import android.accessibilityservice.GestureDescription;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.ComponentName;
@@ -10,8 +11,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager.NameNotFoundException;
+import android.graphics.Path;
+import android.graphics.Rect;
+import android.os.Build;
 import android.os.Bundle;
-import android.preference.PreferenceManager;
 import android.provider.Settings.Secure;
 import android.text.TextUtils;
 import android.view.accessibility.AccessibilityEvent;
@@ -24,6 +27,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
 
+import androidx.annotation.NonNull;
+import androidx.preference.PreferenceManager;
 import xie.morrowind.util.LogUtil;
 
 public class AccessibilityUtilService extends AccessibilityService {
@@ -38,43 +43,55 @@ public class AccessibilityUtilService extends AccessibilityService {
      * @param to The current app package name.
      */
     protected void onAppChanged(String from, String to) {
-    } 
-    
-    protected void onActivityChanged(String from, String to) {
-        
+    }
+
+    /**
+     * Called when activity changed.
+     * @param packageName The app package name.
+     * @param from The last app package name.
+     * @param to The current app package name.
+     */
+    protected void onActivityChanged(String packageName, String from, String to) {
     }
     
     @Override
     public void onCreate() {
         super.onCreate();
         this.context = this;
-        this.prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        try {
+            this.prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        } catch (Exception e) {
+
+        }
     }
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
         if(event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
-            String eventPackageName = event.getPackageName().toString();
-            String eventActivityName = event.getClassName().toString();
+            CharSequence eventPackageName = event.getPackageName();
+            CharSequence eventActivityName = event.getClassName();
+            if(TextUtils.isEmpty(eventPackageName) || TextUtils.isEmpty(eventActivityName)) {
+                return;
+            }
             if(eventPackageName.equals(topPackageName)) {
                 // App internal window changed.
                 if(eventActivityName.equals(topActivityName)) {
                     // Same class name ?
                 } else {
-                    onActivityChanged(topActivityName, eventActivityName);
-                    topActivityName = eventActivityName;
+                    onActivityChanged(topPackageName, topActivityName, eventActivityName.toString());
+                    topActivityName = eventActivityName.toString();
                 }
                 
             } else if(eventPackageName.equals("com.android.systemui")) {
                 // Ignore SystemUI (status bar pull down?).
             } else {
-                if(getPackageName().equals(eventPackageName)) {
+                if(getPackageName().contentEquals(eventPackageName)) {
                     // Ignore own package.
                 } else {
-                    onAppChanged(topPackageName, eventPackageName);
-                    topPackageName = eventPackageName;
-                    onActivityChanged(topActivityName, eventActivityName);
-                    topActivityName = eventActivityName;
+                    onAppChanged(topPackageName, eventPackageName.toString());
+                    topPackageName = eventPackageName.toString();
+                    onActivityChanged(topPackageName, topActivityName, eventActivityName.toString());
+                    topActivityName = eventActivityName.toString();
                 }
             }
         }
@@ -95,15 +112,14 @@ public class AccessibilityUtilService extends AccessibilityService {
         super.onDestroy();
     }
 
-
     private void printNodeTree(AccessibilityNodeInfo root, int[] levels) {
         if(root == null) {
             LogUtil.d("Root is @null");
             return;
         }
         StringBuilder sb = new StringBuilder();
-        for(int i=0; i<levels.length; i++) {
-            sb.append(levels[i]);
+        for (int level : levels) {
+            sb.append(level);
             sb.append(' ');
         }
         sb.append(root.getClassName());
@@ -189,9 +205,7 @@ public class AccessibilityUtilService extends AccessibilityService {
             } else {
                 LogUtil.w("Not an EditText.");
             }
-        } catch (ClassNotFoundException e) {
-            LogUtil.x(e);
-        } catch (NameNotFoundException e) {
+        } catch (ClassNotFoundException | NameNotFoundException e) {
             LogUtil.x(e);
         }
     }
@@ -206,7 +220,7 @@ public class AccessibilityUtilService extends AccessibilityService {
     }
 
     private List<AccessibilityNodeInfo> recursiveFindViewByClass(AccessibilityNodeInfo parent, String clsName) {
-        List<AccessibilityNodeInfo> list = new ArrayList<AccessibilityNodeInfo>();
+        List<AccessibilityNodeInfo> list = new ArrayList<>();
         for(int i=0; i<parent.getChildCount(); i++) {
             AccessibilityNodeInfo child = parent.getChild(i);
             if(child != null) {
@@ -214,8 +228,8 @@ public class AccessibilityUtilService extends AccessibilityService {
                     List<AccessibilityNodeInfo> childList = recursiveFindViewByClass(child, clsName);
                     list.addAll(childList);
                 }
-                if(clsName.equals(child.getClassName())) {
-                    LogUtil.d("Found: id="+child.getViewIdResourceName());
+                if(clsName.contentEquals(child.getClassName())) {
+                    LogUtil.v("Found: id="+child.getViewIdResourceName());
                     list.add(child);
                 } else {
                     child.recycle();
@@ -229,10 +243,10 @@ public class AccessibilityUtilService extends AccessibilityService {
      * Do not forget to recycle list elements after use.
      */
     public final List<AccessibilityNodeInfo> findViewByClass(AccessibilityNodeInfo root, String clsName) {
-        List<AccessibilityNodeInfo> list = new ArrayList<AccessibilityNodeInfo>();
+        List<AccessibilityNodeInfo> list = new ArrayList<>();
         if(root != null) {
-            if(clsName.equals(root.getClassName())) {
-                LogUtil.d(root.getViewIdResourceName());
+            if(clsName.contentEquals(root.getClassName())) {
+                //LogUtil.d(root.getViewIdResourceName());
                 list.add(root);
             }
             list.addAll(recursiveFindViewByClass(root, clsName));
@@ -243,12 +257,12 @@ public class AccessibilityUtilService extends AccessibilityService {
     public final List<AccessibilityNodeInfo> findViewByClass(AccessibilityNodeInfo root, Class<?> cls) {
         return findViewByClass(root, cls.getName());
     }
-    
+
     private AccessibilityNodeInfo recursiveFindFirstViewByClass(AccessibilityNodeInfo root, String clsName) {
         for(int i=0; i<root.getChildCount(); i++) {
             AccessibilityNodeInfo child = root.getChild(i);
             if(child != null) {
-                if(clsName.equals(child.getClassName())) {
+                if(clsName.contentEquals(child.getClassName())) {
                     LogUtil.d("Found: id="+child.getViewIdResourceName());
                     return child;
                 }
@@ -263,7 +277,7 @@ public class AccessibilityUtilService extends AccessibilityService {
     }
     public final AccessibilityNodeInfo findFirstViewByClass(AccessibilityNodeInfo root, String clsName) {
         if(root != null) {
-            if(clsName.equals(root.getClassName())) {
+            if(clsName.contentEquals(root.getClassName())) {
                 LogUtil.d("Found: id="+root.getViewIdResourceName());
                 return root;
             } else {
@@ -281,7 +295,7 @@ public class AccessibilityUtilService extends AccessibilityService {
      * Find view by Id, if view is not unique, will return first found, or return null if not found.
      */
     public final AccessibilityNodeInfo findFirstViewById(AccessibilityNodeInfo root, String viewId) {
-        LogUtil.v(viewId);
+        //LogUtil.v(viewId);
         AccessibilityNodeInfo target = null;
         List<AccessibilityNodeInfo> list = root.findAccessibilityNodeInfosByViewId(viewId);
         if(list.size() != 1) {
@@ -297,7 +311,7 @@ public class AccessibilityUtilService extends AccessibilityService {
         return target;
     }
     
-    private boolean textMatchs(CharSequence text, String regex) {
+    private boolean textMatches(CharSequence text, String regex) {
         if(TextUtils.isEmpty(regex)) {
             return TextUtils.isEmpty(text);
         } else if(TextUtils.isEmpty(text)) {
@@ -310,6 +324,7 @@ public class AccessibilityUtilService extends AccessibilityService {
     private AccessibilityNodeInfo findView(AccessibilityNodeInfo info, String clsName, String regex, int level) {
         CharSequence infoClsName = info.getClassName();
         CharSequence infoText = info.getText();
+        /*
         StringBuilder sb = new StringBuilder();
         for(int i=0; i<level; i++) {
             sb.append('.');
@@ -319,19 +334,24 @@ public class AccessibilityUtilService extends AccessibilityService {
         sb.append(infoText);
         sb.append(')');
         LogUtil.v(sb);
+        */
         // 1. check if this node info is just we finding.
-        if(infoClsName.equals(clsName) && textMatchs(infoText, regex)) {
+        if((TextUtils.isEmpty(clsName) || clsName.contentEquals(infoClsName)) && textMatches(infoText, regex)) {
             return info;
         } else {
-            // 2. then check all this node info's children to find by recusive.
+            // 2. then check all this node info's children to find by recursive.
             level++;
             for (int i=0; i<info.getChildCount(); i++) {
                 AccessibilityNodeInfo child = info.getChild(i);
-                AccessibilityNodeInfo target = findView(child, clsName, regex, level);
-                child.recycle();
-                if(target != null) {
-                    return target;
-                }                
+                if(child != null) {
+                    AccessibilityNodeInfo target = findView(child, clsName, regex, level);
+                    if (child != target) {
+                        child.recycle();
+                    }
+                    if (target != null) {
+                        return target;
+                    }
+                }
             }
             return null;
         }
@@ -344,7 +364,7 @@ public class AccessibilityUtilService extends AccessibilityService {
      * @param regex Regular expression of view's text.
      * @return The view's node info, <code>null</code> if not find.
      */
-    public final AccessibilityNodeInfo findView(AccessibilityNodeInfo info, String clsName, String regex) {
+    public final AccessibilityNodeInfo findView(@NonNull AccessibilityNodeInfo info, @NonNull String clsName, @NonNull String regex) {
         return findView(info, clsName, regex, 0);
     }
     
@@ -355,13 +375,23 @@ public class AccessibilityUtilService extends AccessibilityService {
      * @param regex Regular expression of view's text.
      * @return The view's node info, <code>null</code> if not find.
      */
-    public final AccessibilityNodeInfo findView(AccessibilityNodeInfo info, Class<?> cls, String regex) {
+    public final AccessibilityNodeInfo findView(@NonNull AccessibilityNodeInfo info, @NonNull Class<?> cls, @NonNull String regex) {
         return findView(info, cls.getName(), regex);
     }
-    
+
+    /**
+     * Find view by view's text regular expression.
+     * @param info The root node of tree to be find view in.
+     * @param regex Regular expression of view's text.
+     * @return The view's node info, <code>null</code> if not find.
+     */
+    public final AccessibilityNodeInfo findView(@NonNull AccessibilityNodeInfo info, @NonNull String regex) {
+        return findView(info, null, regex, 0);
+    }
+
     /** Needs  "android.uid.system".
      */
-    public final static void enableService(Context context, Class<?> service) {
+    public static void enableService(Context context, Class<?> service) {
         ComponentName cn = new ComponentName(context, service);
         ContentResolver cr = context.getContentResolver();
         Secure.putString(cr, Secure.ENABLED_ACCESSIBILITY_SERVICES, cn.flattenToString());
@@ -371,16 +401,18 @@ public class AccessibilityUtilService extends AccessibilityService {
     /**
      * Check if accessibility service is enabled.
      */
-    public final static boolean isEnabled(Context context, Class<?> service) {
+    public static boolean isEnabled(Context context, Class<?> service) {
         ComponentName cn = new ComponentName(context, service);
         String serviceId = cn.flattenToShortString();
         AccessibilityManager am = (AccessibilityManager) context.getSystemService(Context.ACCESSIBILITY_SERVICE);
         List<AccessibilityServiceInfo> accessibilityServices = am.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK);
-        //LogUtil.v(accessibilityServices.size());
-        for (AccessibilityServiceInfo info : accessibilityServices) {
-            if (info.getId().equals(serviceId)) {
-                LogUtil.v(info.getId());
-                return true;
+        if(accessibilityServices != null) {
+            //LogUtil.v(accessibilityServices.size());
+            for (AccessibilityServiceInfo info : accessibilityServices) {
+                if (serviceId.equals(info.getId())) {
+                    LogUtil.v(info.getId());
+                    return true;
+                }
             }
         }
         return false;
@@ -389,50 +421,115 @@ public class AccessibilityUtilService extends AccessibilityService {
     /**
      * Goto accessibility service enable/disable page.
      */
-    public final static void gotoAccessibility(Context context) {
+    public static void gotoAccessibility(Context context) {
         Intent intent = new Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         context.startActivity(intent);
     }
-    
+
+    public boolean classEquals(AccessibilityNodeInfo view, Class<?> cls) {
+        return view != null && cls.getName().contentEquals(view.getClassName());
+    }
+
+    public void simulateClick(int x, int y) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            LogUtil.i("手势模拟点击(" + x + ", " + y + ")");
+            Path path = new Path();
+            path.moveTo(x, y);
+            GestureDescription gestureDesc = new GestureDescription.Builder()
+                    .addStroke(new GestureDescription.StrokeDescription(path, 100, 50))
+                    .build();
+            dispatchGesture(gestureDesc, new GestureResultCallback() {
+                @Override
+                public void onCompleted(GestureDescription gestureDescription) {
+                    super.onCompleted(gestureDescription);
+                    //LogUtil.v("手势模拟点击成功");
+                }
+                @Override
+                public void onCancelled(GestureDescription gestureDescription) {
+                    super.onCancelled(gestureDescription);
+                    LogUtil.w("手势模拟点击失败");
+                }
+            }, null);
+        } else {
+            LogUtil.w("系统不支持手势模拟");
+        }
+    }
+    public void simulateClick(AccessibilityNodeInfo view) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            Rect out = new Rect();
+            view.getBoundsInScreen(out);
+            LogUtil.i(out);
+            int x = (out.left + out.right)/2;
+            int y = (out.top + out.bottom)/2;
+            LogUtil.i("手势模拟点击(" + x + ", " + y + ")");
+            Path path = new Path();
+            path.moveTo(out.right-Math.max(1, (out.right-out.left)/8.0f), (out.top+out.bottom)/2.0f);
+            GestureDescription gestureDesc = new GestureDescription.Builder()
+                    .addStroke(new GestureDescription.StrokeDescription(path, 100, 50))
+                    .build();
+            dispatchGesture(gestureDesc, new GestureResultCallback() {
+                @Override
+                public void onCompleted(GestureDescription gestureDescription) {
+                    super.onCompleted(gestureDescription);
+                    //LogUtil.v("手势模拟点击成功");
+                }
+                @Override
+                public void onCancelled(GestureDescription gestureDescription) {
+                    super.onCancelled(gestureDescription);
+                    LogUtil.w("手势模拟点击失败");
+                }
+            }, null);
+        } else {
+            LogUtil.w("系统不支持手势模拟");
+        }
+    }
+
+
+    private SharedPreferences getPreference() {
+        if (prefs == null) {
+            prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        }
+        return prefs;
+    }
     public final boolean getPrefs(String key, boolean defVal) {
-        return prefs.getBoolean(key, defVal);
+        return getPreference().getBoolean(key, defVal);
     }
     
     public final void setPrefs(String key, boolean val) {
-        prefs.edit().putBoolean(key, val).apply();
+        getPreference().edit().putBoolean(key, val).apply();
     }
     
     public final int getPrefs(String key, int defVal) {
-        return prefs.getInt(key, defVal);
+        return getPreference().getInt(key, defVal);
     }
     
     public final void setPrefs(String key, int val) {
-        prefs.edit().putInt(key, val).apply();
+        getPreference().edit().putInt(key, val).apply();
     }
     
     public final long getPrefs(String key, long defVal) {
-        return prefs.getLong(key, defVal);
+        return getPreference().getLong(key, defVal);
     }
     
     public final void setPrefs(String key, long val) {
-        prefs.edit().putLong(key, val).apply();
+        getPreference().edit().putLong(key, val).apply();
     }
     
     public final String getPrefs(String key, String defVal) {
-        return prefs.getString(key, defVal);
+        return getPreference().getString(key, defVal);
     }
     
     public final void setPrefs(String key, String val) {
-        prefs.edit().putString(key, val).apply();
+        getPreference().edit().putString(key, val).apply();
     }
     
     public final float getPrefs(String key, float defVal) {
-        return prefs.getFloat(key, defVal);
+        return getPreference().getFloat(key, defVal);
     }
     
     public final void setPrefs(String key, float val) {
-        prefs.edit().putFloat(key, val).apply();
+        getPreference().edit().putFloat(key, val).apply();
     }
 
 }

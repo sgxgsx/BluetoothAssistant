@@ -1,10 +1,12 @@
 package xie.morrowind.tool.btassist;
 
+import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothDevice;
 import android.os.Bundle;
 
 import xie.morrowind.util.LogUtil;
 
+@SuppressLint("MissingPermission")
 public class PairActivity extends BluetoothActivity {
 
     @Override
@@ -13,7 +15,7 @@ public class PairActivity extends BluetoothActivity {
         LogUtil.d();
 
         if (bluetoothAdapter.isEnabled()) {
-            if (BluetoothUtil.isBonded(deviceName)) {
+            if (BluetoothUtil.isBonded(this, deviceName)) {
                 finishTest(true, "\""+deviceName+"\" already bonded.");
                 return;
             }
@@ -29,7 +31,7 @@ public class PairActivity extends BluetoothActivity {
     protected void onBluetoothOpen(boolean succ) {
         super.onBluetoothOpen(succ);
         if (succ) {
-            if (BluetoothUtil.isBonded(deviceName)) {
+            if (BluetoothUtil.isBonded(this, deviceName)) {
                 finishTest(true, "\""+deviceName+"\" already bonded.");
                 return;
             }

@@ -8,8 +8,8 @@ import xie.morrowind.util.android.AccessibilityUtilService;
 public class BotService extends AccessibilityUtilService {
 
     @Override
-    protected void onActivityChanged(String from, String to) {
-        super.onActivityChanged(from, to);
+    protected void onActivityChanged(String packageName, String from, String to) {
+        super.onActivityChanged(packageName, from, to);
         LogUtil.d(from + " -> " + to);
         if (to.equals("com.android.settings.bluetooth.BluetoothPairingDialog")) {
             printNodeTree(getRootInActiveWindow());

@@ -1,8 +1,11 @@
 package xie.morrowind.tool.btassist;
 
+import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
+import android.content.Context;
+import android.content.pm.PackageManager;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
@@ -13,13 +16,15 @@ import xie.morrowind.util.LogUtil;
 
 final class BluetoothUtil {
 
-    public static boolean isBonded(String name) {
-        BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
-        Set<BluetoothDevice> pairedDevices = adapter.getBondedDevices();
-        if (pairedDevices != null && pairedDevices.size() > 0) {
-            for(BluetoothDevice dev : pairedDevices) {
-                if (name.equals(dev.getName())) {
-                    return true;
+    public static boolean isBonded(Context context, String name) {
+        if (context.checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
+            BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+            Set<BluetoothDevice> pairedDevices = adapter.getBondedDevices();
+            if (pairedDevices != null && pairedDevices.size() > 0) {
+                for (BluetoothDevice dev : pairedDevices) {
+                    if (name.equals(dev.getName())) {
+                        return true;
+                    }
                 }
             }
         }
@@ -34,13 +39,15 @@ final class BluetoothUtil {
         return callBooleanMethod(device.getClass(), "removeBond", device);
     }
 
-    public static boolean removeBond(String name) {
-        BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
-        Set<BluetoothDevice> pairedDevices = adapter.getBondedDevices();
-        if (pairedDevices != null && pairedDevices.size() > 0) {
-            for(BluetoothDevice dev : pairedDevices) {
-                if (name.equals(dev.getName())) {
-                    return removeBond(dev);
+    public static boolean removeBond(Context context, String name) {
+        if (context.checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
+            BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+            Set<BluetoothDevice> pairedDevices = adapter.getBondedDevices();
+            if (pairedDevices != null && pairedDevices.size() > 0) {
+                for (BluetoothDevice dev : pairedDevices) {
+                    if (name.equals(dev.getName())) {
+                        return removeBond(dev);
+                    }
                 }
             }
         }
@@ -79,17 +86,19 @@ final class BluetoothUtil {
         }
     }
 
-    public static boolean connect(BluetoothDevice device) {
-        UUID uuid = UUID.fromString("14c5449a-6267-4c7e-bd10-63dd79740e5d");
-        try {
-            BluetoothSocket socket = device.createInsecureRfcommSocketToServiceRecord(uuid);
-            LogUtil.d(socket);
-            socket.connect();
-            return true;
-        } catch (IOException e) {
-            LogUtil.x(e);
-            return false;
+    public static boolean connect(Context context, BluetoothDevice device) {
+        if (context.checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
+            UUID uuid = UUID.fromString("14c5449a-6267-4c7e-bd10-63dd79740e5d");
+            try {
+                BluetoothSocket socket = device.createInsecureRfcommSocketToServiceRecord(uuid);
+                LogUtil.d(socket);
+                socket.connect();
+                return true;
+            } catch (IOException e) {
+                LogUtil.x(e);
+            }
         }
+        return false;
     }
 
     private static boolean callBooleanMethod(Class<?> clz, String methodName, BluetoothDevice device) {

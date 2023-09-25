@@ -1,5 +1,6 @@
 package xie.morrowind.tool.btassist;
 
+import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -8,6 +9,7 @@ import android.text.TextUtils;
 
 import xie.morrowind.util.LogUtil;
 
+@SuppressLint("MissingPermission")
 public final class PassivePairingReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {

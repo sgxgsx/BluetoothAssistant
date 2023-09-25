@@ -1,17 +1,21 @@
 package xie.morrowind.tool.btassist;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.ActivityManager;
+import android.app.AppOpsManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.view.View;
 import android.widget.Button;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import xie.morrowind.util.LogUtil;
@@ -22,6 +26,7 @@ public class ConfigActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        LogUtil.init(this);
         LogUtil.d();
         
         setContentView(R.layout.activity_config);
@@ -61,6 +66,25 @@ public class ConfigActivity extends Activity {
                 LogUtil.d();
             }
         }, Context.BIND_AUTO_CREATE);
+
+        List<String> permList = new ArrayList<>();
+        // Android 版本大于等于 12 时，申请新的蓝牙权限
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            permList.add(Manifest.permission.BLUETOOTH_SCAN);
+            permList.add(Manifest.permission.BLUETOOTH_ADVERTISE);
+            permList.add(Manifest.permission.BLUETOOTH_CONNECT);
+        } else {
+            permList.add(Manifest.permission.BLUETOOTH);
+            permList.add(Manifest.permission.BLUETOOTH_ADMIN);
+            permList.add(Manifest.permission.BLUETOOTH_PRIVILEGED);
+            permList.add(Manifest.permission.ACCESS_COARSE_LOCATION);
+            permList.add(Manifest.permission.ACCESS_FINE_LOCATION);
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            permList.add(Manifest.permission.MANAGE_EXTERNAL_STORAGE);
+        } else {
+            permList.add(Manifest.permission.WRITE_EXTERNAL_STORAGE);
+        }
     }
 
     @Override
@@ -124,7 +148,7 @@ public class ConfigActivity extends Activity {
         ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
         try {
             List<ActivityManager.RunningServiceInfo> runningServices = am.getRunningServices(Integer.MAX_VALUE);
-            if (runningServices.size() <= 0) {
+            if (runningServices.size() == 0) {
                 return false;
             }
             for (ActivityManager.RunningServiceInfo si : runningServices) {

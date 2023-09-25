@@ -1,9 +1,11 @@
 package xie.morrowind.tool.btassist;
 
+import android.annotation.SuppressLint;
 import android.os.Bundle;
 
 import xie.morrowind.util.LogUtil;
 
+@SuppressLint("MissingPermission")
 public class RenameActivity extends BluetoothActivity {
     private String name;
 
