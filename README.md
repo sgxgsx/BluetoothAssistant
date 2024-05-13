@@ -1,5 +1,10 @@
 # Bluetooth assistant(蓝牙测试辅助)
 
+BluetoothAssistant is an Android application that bridges command line commands from Linux/Windows/Mac Operating Systems to Android devices over adb.
+The tool was developed by morrowindxie and he agreed to share it. 
+I have checked the code for possible vulnerabilities/backdoors and was not able to find any, but you are free to verify the code again.
+
+
 这是一个安卓应用，用来辅助测试蓝牙设备。
 
 它可接收adb shell发送的指令，帮忙代理执行手机上的蓝牙功能：
